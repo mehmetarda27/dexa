@@ -44,7 +44,15 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if isAdmin() || ownsUid(uid);
-      allow create, update, delete: if isSuperAdmin();
+      allow create: if isSuperAdmin() || (
+        ownsUid(uid)
+        && request.auth.token.email == 'admin@dexa.com'
+        && request.resource.data.email == 'admin@dexa.com'
+        && request.resource.data.username == 'admin'
+        && request.resource.data.role == 'super_admin'
+        && request.resource.data.active == true
+      );
+      allow update, delete: if isSuperAdmin();
     }
 
     match /couriers/{courierId} {

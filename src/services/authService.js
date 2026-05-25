@@ -1,14 +1,21 @@
-import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
 import { envValidation } from '../config/env';
 import { getCourierByUid } from './courierService';
 import { auth, firebaseEnabled } from './firebase';
-import { collections, getDocument } from './firestoreService';
+import { collections, getDocument, setDocument } from './firestoreService';
 import { findLocalUser } from './localUserStore';
 
 const SESSION_KEY = 'dexa.session';
 const AUTH_EMAIL_DOMAIN = 'dexa.com';
 const ADMIN_USERNAME = 'admin';
 const ADMIN_EMAIL = 'admin@dexa.com';
+const BOOTSTRAP_ADMIN_PASSWORD = 'delivera3333';
 
 function persistSession(session) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -43,6 +50,33 @@ function getFriendlyAuthError(error, emailForAuth) {
   }
 
   return error?.message || 'Giriş yapılamadı. Lütfen bilgileri kontrol edin.';
+}
+
+function isInvalidCredential(error) {
+  return ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password', 'auth/invalid-login-credentials'].includes(error?.code);
+}
+
+function isBootstrapAdminLogin(emailForAuth, passwordValue) {
+  return emailForAuth === ADMIN_EMAIL && passwordValue === BOOTSTRAP_ADMIN_PASSWORD;
+}
+
+async function ensureBootstrapAdminProfile(uid) {
+  const profile = {
+    uid,
+    username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
+    role: 'super_admin',
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  await setDocument(collections.users, uid, profile);
+  return profile;
+}
+
+async function createBootstrapAdmin(emailForAuth, passwordValue) {
+  const credential = await createUserWithEmailAndPassword(auth, emailForAuth, passwordValue);
+  const userProfile = await ensureBootstrapAdminProfile(credential.user.uid);
+  return { credential, userProfile };
 }
 
 function loginLocally(usernameOrEmail, password) {
@@ -101,15 +135,37 @@ export async function login(usernameOrEmail, password) {
   }
 
   let credential;
+  let bootstrappedProfile = null;
   try {
     credential = await signInWithEmailAndPassword(auth, emailForAuth, passwordValue);
   } catch (error) {
+    if (isInvalidCredential(error) && isBootstrapAdminLogin(emailForAuth, passwordValue)) {
+      try {
+        const bootstrapped = await createBootstrapAdmin(emailForAuth, passwordValue);
+        credential = bootstrapped.credential;
+        bootstrappedProfile = bootstrapped.userProfile;
+      } catch (bootstrapError) {
+        throw new Error(getFriendlyAuthError(bootstrapError, emailForAuth));
+      }
+    } else {
     throw new Error(getFriendlyAuthError(error, emailForAuth));
+    }
   }
 
-  const userProfile = await getDocument(collections.users, credential.user.uid);
+  const userProfile = bootstrappedProfile || await getDocument(collections.users, credential.user.uid);
 
   if (!userProfile) {
+    if (credential.user.email === ADMIN_EMAIL && passwordValue === BOOTSTRAP_ADMIN_PASSWORD) {
+      const profile = await ensureBootstrapAdminProfile(credential.user.uid);
+      return persistSession({
+        uid: credential.user.uid,
+        role: profile.role,
+        username: profile.username,
+        email: profile.email,
+        courierId: null,
+        name: 'Dexa Admin',
+      });
+    }
     await signOut(auth);
     throw new Error('Giriş başarılı ancak Firestore kullanıcı profili bulunamadı. users koleksiyonunda Auth UID ile kayıt oluşturun.');
   }
