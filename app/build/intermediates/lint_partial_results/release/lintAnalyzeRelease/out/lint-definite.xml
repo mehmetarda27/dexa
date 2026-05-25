@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.7.3" type="incidents">
+
+    <incident
+        id="OldTargetApi"
+        severity="warning"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details.">
+        <fix-replace
+            description="Update targetSdkVersion to 36"
+            oldString="35"
+            replacement="36"
+            priority="0"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="19"
+            column="9"
+            startOffset="453"
+            endLine="19"
+            endColumn="21"
+            endOffset="465"/>
+    </incident>
+
+    <incident
+        id="GradleDependency"
+        severity="warning"
+        message="A newer version of com.google.firebase:firebase-bom than 33.9.0 is available: 34.13.0">
+        <fix-replace
+            description="Change to 34.13.0"
+            family="Update versions"
+            oldString="33.9.0"
+            replacement="34.13.0"
+            priority="0"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="64"
+            column="20"
+            startOffset="1661"
+            endLine="64"
+            endColumn="71"
+            endOffset="1712"/>
+    </incident>
+
+    <incident
+        id="GradleDependency"
+        severity="warning"
+        message="A newer version of androidx.core:core than 1.15.0 is available: 1.18.0">
+        <fix-replace
+            description="Change to 1.18.0"
+            family="Update versions"
+            oldString="1.15.0"
+            replacement="1.18.0"
+            priority="0"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="66"
+            column="20"
+            startOffset="1792"
+            endLine="66"
+            endColumn="47"
+            endOffset="1819"/>
+    </incident>
+
+    <incident
+        id="GradleDependency"
+        severity="warning"
+        message="A newer version of androidx.swiperefreshlayout:swiperefreshlayout than 1.1.0 is available: 1.2.0">
+        <fix-replace
+            description="Change to 1.2.0"
+            family="Update versions"
+            oldString="1.1.0"
+            replacement="1.2.0"
+            priority="0"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="67"
+            column="20"
+            startOffset="1839"
+            endLine="67"
+            endColumn="74"
+            endOffset="1893"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="148"
+            column="13"
+            startOffset="5437"
+            endLine="148"
+            endColumn="70"
+            endOffset="5494"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="316"
+            column="13"
+            startOffset="12693"
+            endLine="316"
+            endColumn="59"
+            endOffset="12739"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="489"
+            column="17"
+            startOffset="19629"
+            endLine="489"
+            endColumn="63"
+            endOffset="19675"/>
+    </incident>
+
+    <incident
+        id="ObsoleteSdkInt"
+        severity="warning"
+        message="Unnecessary; SDK_INT is always >= 23">
+        <fix-data conditional="true"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="548"
+            column="17"
+            startOffset="21995"
+            endLine="548"
+            endColumn="70"
+            endOffset="22048"/>
+    </incident>
+
+    <incident
+        id="MonochromeLauncherIcon"
+        severity="warning"
+        message="The application adaptive icon is missing a monochrome tag">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*resDir*0}/mipmap-anydpi-v26/ic_launcher.xml"
+            line="1"
+            column="1"
+            startOffset="0"
+            endLine="4"
+            endColumn="17"
+            endOffset="202"/>
+    </incident>
+
+    <incident
+        id="MonochromeLauncherIcon"
+        severity="warning"
+        message="The application adaptive roundIcon is missing a monochrome tag">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*resDir*0}/mipmap-anydpi-v26/ic_launcher_round.xml"
+            line="1"
+            column="1"
+            startOffset="0"
+            endLine="4"
+            endColumn="17"
+            endOffset="202"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="173"
+            column="23"
+            startOffset="6482"
+            endLine="173"
+            endColumn="29"
+            endOffset="6488"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="181"
+            column="26"
+            startOffset="6806"
+            endLine="181"
+            endColumn="57"
+            endOffset="6837"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="208"
+            column="23"
+            startOffset="7930"
+            endLine="208"
+            endColumn="48"
+            endOffset="7955"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="215"
+            column="25"
+            startOffset="8224"
+            endLine="215"
+            endColumn="74"
+            endOffset="8273"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="223"
+            column="23"
+            startOffset="8593"
+            endLine="223"
+            endColumn="36"
+            endOffset="8606"/>
+    </incident>
+
+</incidents>

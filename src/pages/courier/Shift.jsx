@@ -23,6 +23,7 @@ export default function Shift() {
     assignments,
     shifts,
     breaks,
+    pendingOfflineActions,
     startLocalShift,
     startLocalBreak,
     endLocalBreak,
@@ -38,6 +39,7 @@ export default function Shift() {
   const restaurant = restaurants.find((item) => item.id === todayAssignment?.restaurantId) || restaurants.find((item) => item.id === courier.restaurantId);
   const openShift = shifts.find((item) => item.courierId === courier.id && ['working', 'break'].includes(item.status));
   const activeBreak = openShift ? breaks.find((item) => item.shiftId === openShift.id && item.status === 'active') : null;
+  const pendingActions = pendingOfflineActions.filter((item) => item.courierId === courier.id && item.status === 'pending');
 
   const [position, setPosition] = useState(null);
   const [gpsStatus, setGpsStatus] = useState('İzin bekleniyor');
@@ -62,6 +64,9 @@ export default function Shift() {
     try {
       const nextPosition = await getCurrentPosition();
       setPosition(nextPosition);
+      if (nextPosition.mocked) {
+        throw new Error('Sahte GPS veya mock location algılandı. İşlem güvenlik nedeniyle engellendi.');
+      }
       setGpsStatus('İzin verildi');
       if (nextPosition.accuracy > MAX_ALLOWED_ACCURACY_METERS) {
         throw new Error(`GPS doğruluğu düşük: ${Math.round(nextPosition.accuracy)} m. İşlem için ${MAX_ALLOWED_ACCURACY_METERS} m veya daha iyi doğruluk gerekir.`);
@@ -91,7 +96,11 @@ export default function Shift() {
       if (actionDistance > Number(restaurant.radius || 100)) {
         throw new Error('Restorana 100 metre içinde olmalısın.');
       }
-      await action();
+      const result = await action(actionPosition);
+      if (result?.status === 'pending') {
+        notify({ title: 'İnternet yok', message: 'İşlem beklemeye alındı. Bağlantı gelince otomatik senkronlanacak.' });
+        return;
+      }
       notify({ title: 'İşlem tamamlandı', message: successMessage });
     } catch (error) {
       notify({ type: 'error', title: 'İşlem yapılamadı', message: error.message });
@@ -134,9 +143,19 @@ export default function Shift() {
           </div>
           <StatusBadge>{todayAssignment?.status === 'cancelled' ? 'Reddedildi' : openShift?.status === 'break' ? 'Molada' : openShift ? 'Çalışıyor' : 'Mesai Bitti'}</StatusBadge>
         </div>
+        {openShift?.approvalStatus && (
+          <p className="mt-3 text-sm text-dexa-muted">
+            Admin onayı: {openShift.approvalStatus === 'approved' ? 'Onaylandı' : openShift.approvalStatus === 'rejected' ? 'Reddedildi' : 'Onay bekliyor'}
+          </p>
+        )}
         {todayAssignment?.status === 'cancelled' && (
           <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">
             Bugünkü vardiya iptal edildi. Mesai işlemi yapılamaz.
+          </div>
+        )}
+        {pendingActions.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
+            İnternet yok işlem beklemede. {pendingActions.length} işlem bağlantı gelince Firebase ile senkronlanacak.
           </div>
         )}
         <div className={`mt-4 rounded-2xl border p-4 text-sm ${shiftAlert.type === 'error' ? 'border-rose-300/20 bg-rose-400/10 text-rose-100' : shiftAlert.type === 'warning' ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-dexa-cyan/20 bg-dexa-cyan/10 text-dexa-cyan'}`}>
@@ -189,10 +208,10 @@ export default function Shift() {
             canFinish={canFinish}
             busy={busy}
             helperText={helperText}
-            onStart={() => runShiftAction(() => startLocalShift({ courierId: courier.id, restaurantId: restaurant.id, assignmentId: todayAssignment.id }), 'Mesai sistem saatiyle başlatıldı.', true)}
-            onBreak={() => runShiftAction(() => startLocalBreak(openShift.id), 'Mola başlatıldı.')}
-            onReturn={() => runShiftAction(() => endLocalBreak(openShift.id), 'Mola tamamlandı.')}
-            onFinish={() => runShiftAction(() => endLocalShift(openShift.id), 'Mesai sistem saatiyle bitirildi. Kazanç onay bekliyor.', true)}
+            onStart={() => runShiftAction((actionPosition) => startLocalShift({ courierId: courier.id, restaurantId: restaurant.id, assignmentId: todayAssignment.id, position: actionPosition, device: window.DexaAndroid?.deviceSummary?.() || navigator.userAgent }), 'Mesai sistem saatiyle başlatıldı.', true)}
+            onBreak={() => runShiftAction((actionPosition) => startLocalBreak(openShift.id, { position: actionPosition, device: window.DexaAndroid?.deviceSummary?.() || navigator.userAgent }), 'Mola başlatıldı.')}
+            onReturn={() => runShiftAction((actionPosition) => endLocalBreak(openShift.id, { position: actionPosition, device: window.DexaAndroid?.deviceSummary?.() || navigator.userAgent }), 'Mola tamamlandı.')}
+            onFinish={() => runShiftAction((actionPosition) => endLocalShift(openShift.id, { position: actionPosition, device: window.DexaAndroid?.deviceSummary?.() || navigator.userAgent }), 'Mesai sistem saatiyle bitirildi. Kazanç onay bekliyor.', true)}
           />
         </div>
       </div>

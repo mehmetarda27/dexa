@@ -24,6 +24,10 @@ export function validateLocationAccuracy(position) {
     throw new Error('Konum alınamadı.');
   }
 
+  if (position.mocked) {
+    throw new Error('Sahte GPS veya mock location algılandı. İşlem güvenlik nedeniyle engellendi.');
+  }
+
   if (Number(position.accuracy || 0) > MAX_ALLOWED_ACCURACY_METERS) {
     throw new Error(`GPS doğruluğu düşük. İşlem için doğruluk ${MAX_ALLOWED_ACCURACY_METERS} metreden iyi olmalıdır.`);
   }
@@ -88,6 +92,7 @@ export function getCurrentPosition() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          mocked: Boolean(window.DexaAndroid?.isMockLocationEnabled?.()),
         });
       },
       (error) => {

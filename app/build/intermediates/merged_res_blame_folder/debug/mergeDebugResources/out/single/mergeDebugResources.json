@@ -1,0 +1,42 @@
+[
+    {
+        "merged": "com.dexa.app-debug-20:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.dexa.app-main-22:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/xml_file_paths.xml.flat",
+        "source": "com.dexa.app-main-22:/xml/file_paths.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/xml_network_security_config.xml.flat",
+        "source": "com.dexa.app-main-22:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/drawable_ic_notification.xml.flat",
+        "source": "com.dexa.app-main-22:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/drawable_offline_panel.xml.flat",
+        "source": "com.dexa.app-main-22:/drawable/offline_panel.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/drawable_splash_screen.xml.flat",
+        "source": "com.dexa.app-main-22:/drawable/splash_screen.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/xml_data_extraction_rules.xml.flat",
+        "source": "com.dexa.app-main-22:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.dexa.app-main-22:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/drawable-nodpi_dexa_logo.png.flat",
+        "source": "com.dexa.app-main-22:/drawable-nodpi/dexa_logo.png"
+    },
+    {
+        "merged": "com.dexa.app-debug-20:/xml_backup_rules.xml.flat",
+        "source": "com.dexa.app-main-22:/xml/backup_rules.xml"
+    }
+]

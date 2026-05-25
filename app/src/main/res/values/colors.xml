@@ -1,0 +1,7 @@
+<resources>
+    <color name="dexa_bg">#07111F</color>
+    <color name="dexa_surface">#101B2C</color>
+    <color name="dexa_cyan">#22D3EE</color>
+    <color name="dexa_text">#F8FAFC</color>
+    <color name="dexa_muted">#94A3B8</color>
+</resources>

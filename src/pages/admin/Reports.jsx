@@ -11,37 +11,45 @@ import { useOperations } from '../../state/OperationsContext';
 import { formatCurrency, formatHours } from '../../utils/formatCurrency';
 import { exportReportCsv, exportReportPdf } from '../../services/exportService';
 
+function calculateReportAmount(rows, earnings) {
+  return rows.reduce((sum, shift) => sum + Number(earnings.find((earning) => earning.shiftId === shift.id)?.totalAmount || 0), 0);
+}
+
 export default function Reports() {
-  const { couriers, restaurants, assignments, earnings } = useOperations();
+  const { couriers, restaurants, assignments, shifts, earnings } = useOperations();
   const { notify } = useToast();
   const [filters, setFilters] = useState({ courierId: 'all', restaurantId: 'all', status: 'all', date: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
-  const rows = useMemo(() => earnings.filter((earning) => {
-    const assignment = assignments.find((item) => item.courierId === earning.courierId);
-    if (appliedFilters.courierId !== 'all' && earning.courierId !== appliedFilters.courierId) return false;
-    if (appliedFilters.status !== 'all' && earning.approvalStatus !== appliedFilters.status) return false;
+  const rows = useMemo(() => shifts.filter((shift) => shift.status === 'finished' || shift.status === 'rejected').filter((shift) => {
+    const assignment = assignments.find((item) => item.id === shift.assignmentId);
+    const status = shift.approvalStatus || earnings.find((earning) => earning.shiftId === shift.id)?.approvalStatus || 'pending';
+    if (appliedFilters.courierId !== 'all' && shift.courierId !== appliedFilters.courierId) return false;
+    if (appliedFilters.status !== 'all' && status !== appliedFilters.status) return false;
     if (appliedFilters.restaurantId !== 'all' && assignment?.restaurantId !== appliedFilters.restaurantId) return false;
     if (appliedFilters.date && assignment?.date !== appliedFilters.date) return false;
     return true;
-  }), [appliedFilters, assignments, earnings]);
+  }), [appliedFilters, assignments, earnings, shifts]);
 
-  const totalHours = rows.reduce((sum, row) => sum + Number(row.totalHours || 0), 0);
-  const totalAmount = rows.reduce((sum, row) => sum + Number(row.totalAmount || 0), 0);
+  const totalHours = rows.reduce((sum, row) => sum + Number((row.totalWorkMinutes || 0) / 60), 0);
+  const totalAmount = calculateReportAmount(rows, earnings);
   const approved = rows.filter((row) => row.approvalStatus === 'approved').length;
-  const pending = rows.filter((row) => row.approvalStatus === 'pending').length;
-  const exportRows = rows.map((earning) => {
-    const courier = couriers.find((item) => item.id === earning.courierId);
-    const assignment = assignments.find((item) => item.courierId === earning.courierId);
+  const pending = rows.filter((row) => (row.approvalStatus || 'pending') === 'pending').length;
+  const exportRows = rows.map((shift) => {
+    const courier = couriers.find((item) => item.id === shift.courierId);
+    const assignment = assignments.find((item) => item.id === shift.assignmentId);
     const restaurant = restaurants.find((item) => item.id === assignment?.restaurantId);
+    const earning = earnings.find((item) => item.shiftId === shift.id);
     return {
       courierName: courier?.fullName || '-',
       restaurantName: restaurant?.name || '-',
       date: assignment?.date || '-',
-      totalHours: earning.totalHours,
-      breakMinutes: 0,
-      totalAmount: earning.totalAmount,
-      status: earning.approvalStatus,
+      startTime: shift.startedAt ? new Date(shift.startedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-',
+      endTime: shift.endedAt ? new Date(shift.endedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-',
+      totalHours: Number(((shift.totalWorkMinutes || 0) / 60).toFixed(2)),
+      breakMinutes: shift.totalBreakMinutes || 0,
+      totalAmount: earning?.totalAmount || 0,
+      status: shift.earlyExit ? 'early_exit' : (shift.approvalStatus || earning?.approvalStatus || 'pending'),
     };
   });
 
@@ -81,15 +89,16 @@ export default function Reports() {
         <button className="secondary-button" type="button" onClick={() => { exportReportPdf(exportRows); notify({ title: 'PDF raporu hazırlandı', message: 'PDF dosyası indirildi.' }); }}>PDF indir</button>
       </div>
       <div className="two-column-grid">
-        {rows.length ? <AdminTable columns={['Kurye', 'Saat', 'Kazanç', 'Durum']}>
-          {rows.map((earning) => {
-            const courier = couriers.find((item) => item.id === earning.courierId);
-            const status = earning.approvalStatus === 'approved' ? 'Onaylandı' : earning.approvalStatus === 'rejected' ? 'Reddedildi' : 'Onay Bekliyor';
+        {rows.length ? <AdminTable columns={['Kurye', 'Saat', 'Mola', 'Durum']}>
+          {rows.map((shift) => {
+            const courier = couriers.find((item) => item.id === shift.courierId);
+            const statusValue = shift.earlyExit ? 'early_exit' : (shift.approvalStatus || 'pending');
+            const status = statusValue === 'approved' ? 'Onaylandı' : statusValue === 'rejected' ? 'Reddedildi' : statusValue === 'early_exit' ? 'Erken Çıkış' : 'Onay Bekliyor';
             return (
-              <tr key={earning.id} className="border-b border-white/10 last:border-0">
+              <tr key={shift.id} className="border-b border-white/10 last:border-0">
                 <td className="px-5 py-4 font-semibold text-white">{courier?.fullName}</td>
-                <td className="px-5 py-4 text-sm text-white">{formatHours(earning.totalHours)}</td>
-                <td className="px-5 py-4 text-sm text-white">{formatCurrency(earning.totalAmount)}</td>
+                <td className="px-5 py-4 text-sm text-white">{formatHours(Number((shift.totalWorkMinutes || 0) / 60))}</td>
+                <td className="px-5 py-4 text-sm text-white">{shift.totalBreakMinutes || 0} dk</td>
                 <td className="px-5 py-4"><StatusBadge>{status}</StatusBadge></td>
               </tr>
             );

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.7.3" type="partial_results">
+    <map id="NotificationPermission">
+        <location id="class"
+            file="$GRADLE_USER_HOME/caches/8.10.2/transforms/0856e99f39754892ca895cec8165a254/transformed/firebase-messaging-24.1.0/jars/classes.jar"/>
+        <entry
+            name="className"
+            string="com/google/firebase/messaging/DisplayNotification"/>
+        <entry
+            name="source"
+            boolean="true"/>
+    </map>
+    <map id="UnsafeImplicitIntentLaunch">
+            <map id="actionsSent">
+                    <map id="android.intent.action.VIEW (used to start an activity)">
+                        <location id="0"
+                            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+                            line="506"
+                            column="29"
+                            startOffset="20427"
+                            endLine="506"
+                            endColumn="64"
+                            endOffset="20462"/>
+                    </map>
+            </map>
+    </map>
+    <map id="UnsafeIntentLaunch">
+            <map id="unprotected">
+                <entry
+                    name="com.dexa.app.MainActivity"
+                    boolean="true"/>
+            </map>
+    </map>
+    <map id="UnusedResources">
+        <entry
+            name="model"
+            string="color[dexa_cyan(U),dexa_surface(U),dexa_bg(U),dexa_text(U),dexa_muted(U)],drawable[ic_notification(U),offline_panel(U),splash_screen(U),dexa_logo(U)],mipmap[ic_launcher(U),ic_launcher_round(U)],string[app_name(U)],style[Theme_Dexa(U),Theme_Dexa_Splash(U)],xml[data_extraction_rules(U),backup_rules(U),network_security_config(U),file_paths(U)];6^1,7^2^8,9^2^8,a^2^8,c^2,d^7^2;;;"/>
+    </map>
+
+</incidents>

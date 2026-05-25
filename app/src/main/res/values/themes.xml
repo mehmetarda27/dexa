@@ -1,0 +1,16 @@
+<resources>
+    <style name="Theme.Dexa" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/dexa_bg</item>
+        <item name="android:navigationBarColor">@color/dexa_bg</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+
+    <style name="Theme.Dexa.Splash" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:statusBarColor">@color/dexa_bg</item>
+        <item name="android:navigationBarColor">@color/dexa_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

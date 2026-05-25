@@ -26,6 +26,8 @@ export const collections = {
   reports: 'reports',
   announcements: 'announcements',
   notifications: 'notifications',
+  shiftEvents: 'shiftEvents',
+  settings: 'settings',
   auditLogs: 'auditLogs',
   offlineQueue: 'offlineQueue',
 };

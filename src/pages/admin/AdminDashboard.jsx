@@ -1,4 +1,4 @@
-import { AlertTriangle, Building2, CheckCircle2, Clock3, UserX, UsersRound, Wallet } from 'lucide-react';
+import { AlertTriangle, Bell, Building2, CheckCircle2, Clock3, History, Settings2, UserX, UsersRound, Wallet } from 'lucide-react';
 import ApprovalPanel from '../../components/admin/ApprovalPanel';
 import PageHeader from '../../components/common/PageHeader';
 import StatCard from '../../components/common/StatCard';
@@ -9,13 +9,16 @@ import { calculateEarnings } from '../../services/earningsService';
 import { formatCurrency, formatHours } from '../../utils/formatCurrency';
 
 export default function AdminDashboard() {
-  const { couriers, restaurants, assignments, earnings } = useOperations();
+  const { couriers, restaurants, assignments, shifts, shiftEvents, notifications, earnings, settings, updateSettings } = useOperations();
   const activeCouriers = couriers.filter((courier) => courier.active).length;
   const pending = earnings.filter((earning) => earning.approvalStatus === 'pending').length;
   const totalHours = earnings.reduce((sum, earning) => sum + Number(earning.totalHours || 0), 0);
   const totalEarnings = calculateEarnings(totalHours);
   const lateAssignments = assignments.filter((assignment) => assignment.operationalStatus === 'late');
   const noShowAssignments = assignments.filter((assignment) => assignment.operationalStatus === 'no_show');
+  const activeShifts = shifts.filter((shift) => ['working', 'break'].includes(shift.status));
+  const latestEvents = [...shiftEvents].slice(0, 8);
+  const adminNotifications = notifications.filter((notification) => notification.userId === 'admin').slice(0, 6);
 
   return (
     <div>
@@ -65,6 +68,63 @@ export default function AdminDashboard() {
           )}
         </section>
         <ApprovalPanel />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
+        <section className="glass-panel rounded-3xl p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <span className="eyebrow">Canlı vardiya</span>
+              <h2 className="mt-2 text-xl font-bold text-white">Anlık kurye mesai takibi</h2>
+            </div>
+            <History className="text-dexa-cyan" />
+          </div>
+          <div className="grid gap-3">
+            {activeShifts.length ? activeShifts.map((shift) => {
+              const courier = couriers.find((item) => item.id === shift.courierId);
+              return (
+                <article key={shift.id} className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div>
+                    <strong className="text-white">{courier?.fullName}</strong>
+                    <p className="mt-1 text-sm text-dexa-muted">
+                      Mesai başladı · {new Date(shift.startedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <StatusBadge>{shift.status === 'break' ? 'Molada' : shift.approvalStatus === 'pending' ? 'Onay Bekliyor' : 'Çalışıyor'}</StatusBadge>
+                </article>
+              );
+            }) : <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-dexa-muted">Aktif vardiya yok.</p>}
+          </div>
+          <div className="mt-5 grid gap-3">
+            {latestEvents.map((event) => (
+              <div key={event.id} className="rounded-2xl border border-white/10 bg-[#0b1326] p-3 text-sm text-dexa-muted">
+                <span className="font-semibold text-white">{event.message}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="glass-panel rounded-3xl p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <span className="eyebrow">Bildirim geçmişi</span>
+              <h2 className="mt-2 text-xl font-bold text-white">Admin uyarıları</h2>
+            </div>
+            <Bell className="text-dexa-cyan" />
+          </div>
+          <label className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-white">
+            <span className="flex items-center gap-2"><Settings2 size={16} /> Admin onayı zorunlu</span>
+            <input type="checkbox" checked={settings.adminApprovalRequired} onChange={(event) => updateSettings({ adminApprovalRequired: event.target.checked })} />
+          </label>
+          <div className="grid gap-3">
+            {adminNotifications.length ? adminNotifications.map((notification) => (
+              <article key={notification.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                <strong className="text-sm text-white">{notification.title}</strong>
+                <p className="mt-1 text-sm text-dexa-muted">{notification.message}</p>
+              </article>
+            )) : <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-dexa-muted">Henüz admin bildirimi yok.</p>}
+          </div>
+        </section>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">

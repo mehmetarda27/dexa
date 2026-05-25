@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="dexa_bg">#07111F</color>
+    <color name="dexa_cyan">#22D3EE</color>
+    <color name="dexa_muted">#94A3B8</color>
+    <color name="dexa_surface">#101B2C</color>
+    <color name="dexa_text">#F8FAFC</color>
+    <string name="app_name">Dexa</string>
+    <string name="gcm_defaultSenderId" translatable="false">235664641660</string>
+    <string name="google_api_key" translatable="false">AIzaSyDWEhArJYQEotCiHwa58wL88MCHGDt-U2Q</string>
+    <string name="google_app_id" translatable="false">1:235664641660:android:aaacd737decc81293ec3f9</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDWEhArJYQEotCiHwa58wL88MCHGDt-U2Q</string>
+    <string name="google_storage_bucket" translatable="false">dexa-52506.firebasestorage.app</string>
+    <string name="project_id" translatable="false">dexa-52506</string>
+    <style name="Theme.Dexa" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/dexa_bg</item>
+        <item name="android:navigationBarColor">@color/dexa_bg</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+    <style name="Theme.Dexa.Splash" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:statusBarColor">@color/dexa_bg</item>
+        <item name="android:navigationBarColor">@color/dexa_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

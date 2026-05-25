@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.7.3" type="conditional_incidents">
+
+    <incident
+        id="NotificationPermission"
+        severity="error"
+        message="When targeting Android 13 or higher, posting a permission requires holding the `POST_NOTIFICATIONS` permission">
+        <fix-data missing="android.permission.POST_NOTIFICATIONS"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/DexaMessagingService.java"
+            line="67"
+            column="9"
+            startOffset="2837"
+            endLine="67"
+            endColumn="103"
+            endOffset="2931"/>
+    </incident>
+
+    <incident
+        id="UnusedAttribute"
+        severity="warning"
+        message="">
+        <fix-data minSdk="ffffffffffc00000" requiresApi="ffffffffff800000"/>
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*manifest*0}"
+            line="29"
+            column="9"
+            startOffset="1173"
+            endLine="29"
+            endColumn="69"
+            endOffset="1233"/>
+        <map>
+            <entry
+                name="message"
+                string="Attribute `networkSecurityConfig` is only used in API level 24 and higher (current min is %1$s)"/>
+            <api-levels id="minSdk"
+                value="ffffffffffc00000"/>
+            <api-levels id="requiresApi"
+                value="ffffffffff800000"/>
+        </map>
+    </incident>
+
+    <incident
+        id="QueryPermissionsNeeded"
+        severity="warning"
+        message="Consider adding a `&lt;queries>` declaration to your manifest when calling this method; see https://g.co/dev/packagevisibility for details">
+        <location
+            file="${:app*release*MAIN*sourceProvider*0*javaDir*0}/com/dexa/app/MainActivity.java"
+            line="365"
+            column="26"
+            startOffset="14783"
+            endLine="365"
+            endColumn="41"
+            endOffset="14798"/>
+        <map>
+            <entry
+                name="queryAll"
+                boolean="false"/>
+        </map>
+    </incident>
+
+</incidents>
