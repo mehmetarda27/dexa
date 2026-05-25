@@ -52,6 +52,19 @@ function getFriendlyAuthError(error, emailForAuth) {
   return error?.message || 'Giriş yapılamadı. Lütfen bilgileri kontrol edin.';
 }
 
+function getFriendlySignupError(error, emailForAuth) {
+  if (error?.code === 'auth/email-already-in-use') {
+    return `Firebase Auth hesabı ${emailForAuth} var, ancak şifre hatalı. Şifreyi kontrol edin.`;
+  }
+  if (error?.code === 'auth/weak-password') {
+    return 'Şifre en az 6 karakter olmalıdır.';
+  }
+  if (error?.code === 'auth/operation-not-allowed') {
+    return 'Firebase Auth Email/Password sağlayıcısı kapalı. Firebase Console içinde etkinleştirin.';
+  }
+  return getFriendlyAuthError(error, emailForAuth);
+}
+
 function isInvalidCredential(error) {
   return ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password', 'auth/invalid-login-credentials'].includes(error?.code);
 }
@@ -108,6 +121,71 @@ function persistBootstrapAdminSession(uid) {
     courierId: null,
     name: 'Dexa Admin',
   });
+}
+
+async function ensureCourierSelfProfile({ uid, username, email }) {
+  const now = new Date().toISOString();
+  const courierId = `cr-${uid.slice(0, 10)}`;
+  const displayName = username
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || username;
+
+  await setDocument(collections.users, uid, {
+    uid,
+    username,
+    email,
+    role: 'courier',
+    active: true,
+    createdAt: now,
+  });
+
+  await setDocument(collections.couriers, courierId, {
+    uid,
+    fullName: displayName,
+    username,
+    phone: '',
+    active: true,
+    status: 'Mesai Bitti',
+    currentStatus: 'Mesai Bitti',
+    restaurantId: null,
+    shift: '10:00 - 18:00',
+    startTime: null,
+    endTime: null,
+    plannedHours: 8,
+    workedToday: 0,
+    weeklyHours: 0,
+    monthlyHours: 0,
+    distanceMeters: 999,
+    createdAt: now,
+  });
+
+  return {
+    userProfile: {
+      uid,
+      username,
+      email,
+      role: 'courier',
+      active: true,
+    },
+    courierProfile: {
+      id: courierId,
+      uid,
+      fullName: displayName,
+    },
+  };
+}
+
+async function createMissingCourierAccount({ emailForAuth, passwordValue, loginValue }) {
+  const credential = await createUserWithEmailAndPassword(auth, emailForAuth, passwordValue);
+  const username = loginValue.includes('@') ? loginValue.split('@')[0] : loginValue;
+  const profiles = await ensureCourierSelfProfile({
+    uid: credential.user.uid,
+    username,
+    email: emailForAuth,
+  });
+  return { credential, ...profiles };
 }
 
 function getFriendlyFirestoreError(error) {
@@ -174,6 +252,7 @@ export async function login(usernameOrEmail, password) {
 
   let credential;
   let bootstrappedProfile = null;
+  let selfCourierProfile = null;
   try {
     credential = await signInWithEmailAndPassword(auth, emailForAuth, passwordValue);
   } catch (error) {
@@ -186,7 +265,14 @@ export async function login(usernameOrEmail, password) {
         throw new Error(getFriendlyAuthError(bootstrapError, emailForAuth));
       }
     } else {
-    throw new Error(getFriendlyAuthError(error, emailForAuth));
+      try {
+        const selfCreated = await createMissingCourierAccount({ emailForAuth, passwordValue, loginValue });
+        credential = selfCreated.credential;
+        bootstrappedProfile = selfCreated.userProfile;
+        selfCourierProfile = selfCreated.courierProfile;
+      } catch (signupError) {
+        throw new Error(isInvalidCredential(error) ? getFriendlySignupError(signupError, emailForAuth) : getFriendlyAuthError(error, emailForAuth));
+      }
     }
   }
 
@@ -235,7 +321,7 @@ export async function login(usernameOrEmail, password) {
     throw new Error('Hesap aktif değil.');
   }
 
-  const courierProfile = userProfile.role === 'courier' ? await getCourierByUid(credential.user.uid) : null;
+  const courierProfile = selfCourierProfile || (userProfile.role === 'courier' ? await getCourierByUid(credential.user.uid) : null);
 
   return persistSession({
     uid: credential.user.uid,

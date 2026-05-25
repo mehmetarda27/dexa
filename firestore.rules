@@ -51,13 +51,19 @@ service cloud.firestore {
         && request.resource.data.username == 'admin'
         && request.resource.data.role == 'super_admin'
         && request.resource.data.active == true
+      ) || (
+        ownsUid(uid)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'courier'
+        && request.resource.data.active == true
       );
       allow update, delete: if isSuperAdmin();
     }
 
     match /couriers/{courierId} {
       allow read: if isAdmin() || ownsCourier(courierId);
-      allow create, update: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin() || ownsUid(request.resource.data.uid);
+      allow update: if isAdmin() || isSuperAdmin();
       allow delete: if false;
     }
 
