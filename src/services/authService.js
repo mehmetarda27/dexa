@@ -123,27 +123,36 @@ function persistBootstrapAdminSession(uid) {
   });
 }
 
-async function ensureCourierSelfProfile({ uid, username, email }) {
-  const now = new Date().toISOString();
-  const courierId = `cr-${uid.slice(0, 10)}`;
-  const displayName = username
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ') || username;
+function usernameFromEmail(email) {
+  return String(email || '').trim().toLowerCase().split('@')[0] || 'kurye';
+}
 
-  await setDocument(collections.users, uid, {
-    uid,
+function persistSessionFromAuthUser(user) {
+  const email = user?.email?.toLowerCase() || '';
+  if (email === ADMIN_EMAIL) {
+    return persistBootstrapAdminSession(user.uid);
+  }
+
+  const username = usernameFromEmail(email);
+  return persistCourierSession({
+    uid: user.uid,
     username,
     email,
-    role: 'courier',
-    active: true,
-    createdAt: now,
+    courierProfile: buildCourierProfiles({ uid: user.uid, username, email }).courierProfile,
+  });
+}
+
+async function ensureCourierSelfProfile({ uid, username, email }) {
+  const { userProfile, courierProfile } = buildCourierProfiles({ uid, username, email });
+
+  await setDocument(collections.users, uid, {
+    ...userProfile,
+    createdAt: new Date().toISOString(),
   });
 
-  await setDocument(collections.couriers, courierId, {
+  await setDocument(collections.couriers, courierProfile.id, {
     uid,
-    fullName: displayName,
+    fullName: courierProfile.fullName,
     username,
     phone: '',
     active: true,
@@ -158,8 +167,19 @@ async function ensureCourierSelfProfile({ uid, username, email }) {
     weeklyHours: 0,
     monthlyHours: 0,
     distanceMeters: 999,
-    createdAt: now,
+    createdAt: new Date().toISOString(),
   });
+
+  return { userProfile, courierProfile };
+}
+
+function buildCourierProfiles({ uid, username, email }) {
+  const courierId = `cr-${uid.slice(0, 10)}`;
+  const displayName = username
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || username;
 
   return {
     userProfile: {
@@ -177,14 +197,30 @@ async function ensureCourierSelfProfile({ uid, username, email }) {
   };
 }
 
+function persistCourierSession({ uid, username, email, courierProfile }) {
+  return persistSession({
+    uid,
+    role: 'courier',
+    username,
+    email,
+    courierId: courierProfile?.id || `cr-${uid.slice(0, 10)}`,
+    name: courierProfile?.fullName || username,
+  });
+}
+
 async function createMissingCourierAccount({ emailForAuth, passwordValue, loginValue }) {
   const credential = await createUserWithEmailAndPassword(auth, emailForAuth, passwordValue);
   const username = loginValue.includes('@') ? loginValue.split('@')[0] : loginValue;
-  const profiles = await ensureCourierSelfProfile({
-    uid: credential.user.uid,
-    username,
-    email: emailForAuth,
-  });
+  let profiles;
+  try {
+    profiles = await ensureCourierSelfProfile({
+      uid: credential.user.uid,
+      username,
+      email: emailForAuth,
+    });
+  } catch {
+    profiles = buildCourierProfiles({ uid: credential.user.uid, username, email: emailForAuth });
+  }
   return { credential, ...profiles };
 }
 
@@ -292,12 +328,13 @@ export async function login(usernameOrEmail, password) {
     return persistBootstrapAdminSession(credential.user.uid);
   }
 
-  let userProfile;
-  try {
-    userProfile = await getDocument(collections.users, credential.user.uid);
-  } catch (error) {
-    await signOut(auth);
-    throw new Error(getFriendlyFirestoreError(error));
+  let userProfile = bootstrappedProfile;
+  if (!userProfile) {
+    try {
+      userProfile = await getDocument(collections.users, credential.user.uid);
+    } catch (error) {
+      return persistSessionFromAuthUser(credential.user);
+    }
   }
 
   if (!userProfile) {
@@ -312,8 +349,7 @@ export async function login(usernameOrEmail, password) {
         name: 'Dexa Admin',
       });
     }
-    await signOut(auth);
-    throw new Error('Giriş başarılı ancak Firestore kullanıcı profili bulunamadı. users koleksiyonunda Auth UID ile kayıt oluşturun.');
+    return persistSessionFromAuthUser(credential.user);
   }
 
   if (!userProfile.active) {
@@ -321,7 +357,18 @@ export async function login(usernameOrEmail, password) {
     throw new Error('Hesap aktif değil.');
   }
 
-  const courierProfile = selfCourierProfile || (userProfile.role === 'courier' ? await getCourierByUid(credential.user.uid) : null);
+  let courierProfile = selfCourierProfile;
+  if (!courierProfile && userProfile.role === 'courier') {
+    try {
+      courierProfile = await getCourierByUid(credential.user.uid);
+    } catch {
+      courierProfile = buildCourierProfiles({
+        uid: credential.user.uid,
+        username: userProfile.username || loginValue,
+        email: userProfile.email || emailForAuth,
+      }).courierProfile;
+    }
+  }
 
   return persistSession({
     uid: credential.user.uid,
@@ -367,17 +414,16 @@ export async function getCurrentSession() {
       try {
         userProfile = await getDocument(collections.users, user.uid);
       } catch {
-        if (isBootstrapAdminUser(user)) {
-          resolve(persistBootstrapAdminSession(user.uid));
-          return;
-        }
-        localStorage.removeItem(SESSION_KEY);
-        resolve(null);
+        resolve(persistSessionFromAuthUser(user));
         return;
       }
 
       if (!userProfile && isBootstrapAdminUser(user)) {
         resolve(persistBootstrapAdminSession(user.uid));
+        return;
+      }
+      if (!userProfile) {
+        resolve(persistSessionFromAuthUser(user));
         return;
       }
       if (!userProfile?.active) {

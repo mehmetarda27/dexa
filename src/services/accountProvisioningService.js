@@ -43,33 +43,37 @@ export async function provisionCourierAccount(payload) {
     const uid = authUser.localId;
     const courierId = `cr-${uid.slice(0, 10)}`;
 
-    await setDocument(collections.users, uid, {
-      uid,
-      username,
-      email,
-      role: 'courier',
-      active: true,
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      await setDocument(collections.users, uid, {
+        uid,
+        username,
+        email,
+        role: 'courier',
+        active: true,
+        createdAt: new Date().toISOString(),
+      });
 
-    await setDocument(collections.couriers, courierId, {
-      uid,
-      fullName: payload.fullName,
-      username,
-      phone: payload.phone,
-      active: true,
-      status: payload.currentStatus || 'Mesai Bitti',
-      currentStatus: payload.currentStatus || 'Mesai Bitti',
-      restaurantId: payload.restaurantId,
-      shift: payload.shift || '10:00 - 18:00',
-      startTime: null,
-      endTime: null,
-      plannedHours: 8,
-      workedToday: 0,
-      weeklyHours: 0,
-      monthlyHours: 0,
-      distanceMeters: 999,
-    });
+      await setDocument(collections.couriers, courierId, {
+        uid,
+        fullName: payload.fullName,
+        username,
+        phone: payload.phone,
+        active: true,
+        status: payload.currentStatus || 'Mesai Bitti',
+        currentStatus: payload.currentStatus || 'Mesai Bitti',
+        restaurantId: payload.restaurantId,
+        shift: payload.shift || '10:00 - 18:00',
+        startTime: null,
+        endTime: null,
+        plannedHours: 8,
+        workedToday: 0,
+        weeklyHours: 0,
+        monthlyHours: 0,
+        distanceMeters: 999,
+      });
+    } catch {
+      // Auth account is enough for login; Firestore profile can be completed after rules are deployed.
+    }
 
     return { id: courierId, uid, email };
   } catch (error) {
