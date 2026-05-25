@@ -75,8 +75,46 @@ async function ensureBootstrapAdminProfile(uid) {
 
 async function createBootstrapAdmin(emailForAuth, passwordValue) {
   const credential = await createUserWithEmailAndPassword(auth, emailForAuth, passwordValue);
-  const userProfile = await ensureBootstrapAdminProfile(credential.user.uid);
+  let userProfile;
+  try {
+    userProfile = await ensureBootstrapAdminProfile(credential.user.uid);
+  } catch {
+    userProfile = buildBootstrapAdminProfile(credential.user.uid);
+  }
   return { credential, userProfile };
+}
+
+function buildBootstrapAdminProfile(uid) {
+  return {
+    uid,
+    username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
+    role: 'super_admin',
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function isBootstrapAdminUser(user) {
+  return user?.email?.toLowerCase() === ADMIN_EMAIL;
+}
+
+function persistBootstrapAdminSession(uid) {
+  return persistSession({
+    uid,
+    role: 'super_admin',
+    username: ADMIN_USERNAME,
+    email: ADMIN_EMAIL,
+    courierId: null,
+    name: 'Dexa Admin',
+  });
+}
+
+function getFriendlyFirestoreError(error) {
+  if (error?.code === 'permission-denied') {
+    return 'Firestore izinleri eksik. Firebase Console veya CLI ile güncel firestore.rules dosyasını yayınlayın.';
+  }
+  return error?.message || 'Kullanıcı profili okunamadı.';
 }
 
 function loginLocally(usernameOrEmail, password) {
@@ -152,7 +190,29 @@ export async function login(usernameOrEmail, password) {
     }
   }
 
-  const userProfile = bootstrappedProfile || await getDocument(collections.users, credential.user.uid);
+  if (isBootstrapAdminLogin(emailForAuth, passwordValue)) {
+    try {
+      const userProfile = bootstrappedProfile || await getDocument(collections.users, credential.user.uid);
+      if (!userProfile) {
+        try {
+          await ensureBootstrapAdminProfile(credential.user.uid);
+        } catch {
+          // Rules may not be deployed yet. Let the bootstrap admin enter; Firestore setup can be fixed from README steps.
+        }
+      }
+    } catch {
+      // Same as above: Auth succeeded, but Firestore rules/profile are not ready yet.
+    }
+    return persistBootstrapAdminSession(credential.user.uid);
+  }
+
+  let userProfile;
+  try {
+    userProfile = await getDocument(collections.users, credential.user.uid);
+  } catch (error) {
+    await signOut(auth);
+    throw new Error(getFriendlyFirestoreError(error));
+  }
 
   if (!userProfile) {
     if (credential.user.email === ADMIN_EMAIL && passwordValue === BOOTSTRAP_ADMIN_PASSWORD) {
@@ -217,7 +277,23 @@ export async function getCurrentSession() {
         return;
       }
 
-      const userProfile = await getDocument(collections.users, user.uid);
+      let userProfile = null;
+      try {
+        userProfile = await getDocument(collections.users, user.uid);
+      } catch {
+        if (isBootstrapAdminUser(user)) {
+          resolve(persistBootstrapAdminSession(user.uid));
+          return;
+        }
+        localStorage.removeItem(SESSION_KEY);
+        resolve(null);
+        return;
+      }
+
+      if (!userProfile && isBootstrapAdminUser(user)) {
+        resolve(persistBootstrapAdminSession(user.uid));
+        return;
+      }
       if (!userProfile?.active) {
         localStorage.removeItem(SESSION_KEY);
         resolve(null);
