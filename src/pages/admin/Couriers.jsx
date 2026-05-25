@@ -1,5 +1,5 @@
 import { Edit3, Power, Save, UserPlus, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AdminTable from '../../components/admin/AdminTable';
 import EmptyState from '../../components/common/EmptyState';
 import PageHeader from '../../components/common/PageHeader';
@@ -17,15 +17,8 @@ export default function Couriers() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
 
-  useEffect(() => {
-    setForm((current) => ({
-      ...current,
-      restaurantId: current.restaurantId || restaurants[0]?.id || '',
-    }));
-  }, [restaurants]);
-
   const resetForm = () => {
-    setForm({ ...emptyForm, restaurantId: restaurants[0]?.id || '' });
+    setForm(emptyForm);
     setEditingId(null);
   };
 
@@ -59,7 +52,7 @@ export default function Couriers() {
       password: courier.password || '',
       phone: courier.phone,
       currentStatus: courier.status || courier.currentStatus || 'Mesai Bitti',
-      restaurantId: courier.restaurantId || restaurants[0]?.id || '',
+      restaurantId: courier.restaurantId || '',
     });
   };
 

@@ -13,7 +13,7 @@ export default function Assignments() {
   const { notify } = useToast();
   const [form, setForm] = useState({
     courierId: couriers[0]?.id || '',
-    restaurantId: restaurants[0]?.id || '',
+    restaurantId: '',
     date: tomorrowISO(),
     startTime: '10:00',
     endTime: '18:00',
@@ -24,9 +24,8 @@ export default function Assignments() {
     setForm((current) => ({
       ...current,
       courierId: current.courierId || couriers[0]?.id || '',
-      restaurantId: current.restaurantId || restaurants[0]?.id || '',
     }));
-  }, [couriers, restaurants]);
+  }, [couriers]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -87,6 +86,7 @@ export default function Assignments() {
             {couriers.map((courier) => <option key={courier.id} value={courier.id}>{courier.fullName}</option>)}
           </select>
           <select className="field" value={form.restaurantId} onChange={(event) => setForm({ ...form, restaurantId: event.target.value })}>
+            <option value="">Restoran seç</option>
             {restaurants.map((restaurant) => <option key={restaurant.id} value={restaurant.id}>{restaurant.name}</option>)}
           </select>
           <input className="field" type="date" value={form.date} min={todayISO()} onChange={(event) => setForm({ ...form, date: event.target.value })} />

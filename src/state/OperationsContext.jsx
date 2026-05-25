@@ -17,6 +17,28 @@ import {
 
 const OperationsContext = createContext(null);
 const STORAGE_PREFIX = 'dexa.operations.';
+const COURIER_DATA_RESET_KEY = 'dexa.migrations.clearCourierData.2026-05-25';
+const COURIER_DATA_KEYS = [
+  `${STORAGE_PREFIX}couriers`,
+  `${STORAGE_PREFIX}assignments`,
+  `${STORAGE_PREFIX}shifts`,
+  `${STORAGE_PREFIX}breaks`,
+  `${STORAGE_PREFIX}earnings`,
+  `${STORAGE_PREFIX}notifications`,
+  'dexa.localUsers',
+];
+
+function runCourierDataResetMigration() {
+  try {
+    if (localStorage.getItem(COURIER_DATA_RESET_KEY)) return;
+    COURIER_DATA_KEYS.forEach((key) => localStorage.setItem(key, '[]'));
+    localStorage.setItem(COURIER_DATA_RESET_KEY, new Date().toISOString());
+  } catch {
+    // The app can still boot if browser storage is unavailable.
+  }
+}
+
+runCourierDataResetMigration();
 
 function readStoredState(key, fallback) {
   try {
@@ -140,7 +162,7 @@ export function OperationsProvider({ children }) {
         active: true,
         status: 'Mesai Bitti',
         currentStatus: 'Mesai Bitti',
-        restaurantId: restaurants[0]?.id || null,
+        restaurantId: null,
         shift: '10:00 - 18:00',
         startTime: null,
         endTime: null,
@@ -153,23 +175,7 @@ export function OperationsProvider({ children }) {
       return [courier, ...current];
     });
 
-    setAssignments((current) => {
-      const hasAnyAssignment = current.some((assignment) => assignment.courierId === session.courierId);
-      if (hasAnyAssignment || !restaurants[0]?.id) return current;
-      return [
-        {
-          id: `asg-${session.courierId}-today`,
-          courierId: session.courierId,
-          restaurantId: restaurants[0].id,
-          date: todayISO(),
-          startTime: '10:00',
-          endTime: '18:00',
-          status: 'planned',
-        },
-        ...current,
-      ];
-    });
-  }, [restaurants, setAssignments, setCouriers]);
+  }, [setCouriers]);
 
   const addAuditLog = useCallback((action, metadata = {}, actor = { name: 'Sistem', role: 'admin' }) => {
     const log = {
@@ -257,7 +263,7 @@ export function OperationsProvider({ children }) {
       active: true,
       status: payload.currentStatus || 'Mesai Bitti',
       currentStatus: payload.currentStatus || 'Mesai Bitti',
-      restaurantId: payload.restaurantId || restaurants[0]?.id,
+      restaurantId: payload.restaurantId || null,
       shift: payload.shift || '10:00 - 18:00',
       startTime: null,
       endTime: null,
@@ -280,7 +286,7 @@ export function OperationsProvider({ children }) {
     });
     addAuditLog('courier_created', { courierId: courier.id, fullName: courier.fullName });
     return courier;
-  }, [addAuditLog, restaurants]);
+  }, [addAuditLog]);
 
   const updateCourier = useCallback((courierId, payload) => {
     setCouriers((current) =>
