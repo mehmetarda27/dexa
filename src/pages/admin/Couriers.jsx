@@ -28,21 +28,26 @@ export default function Couriers() {
     setEditingId(null);
   };
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     const errors = validateCourierForm(form);
     if (Object.keys(errors).length) {
       notify({ type: 'error', title: 'Eksik bilgi', message: Object.values(errors)[0] });
       return;
     }
-    if (editingId) {
-      updateCourier(editingId, form);
-      notify({ title: 'Kurye güncellendi', message: form.fullName });
-    } else {
-      addCourier(form);
-      notify({ title: 'Kurye eklendi', message: form.fullName });
+
+    try {
+      if (editingId) {
+        updateCourier(editingId, form);
+        notify({ title: 'Kurye güncellendi', message: form.fullName });
+      } else {
+        await addCourier(form);
+        notify({ title: 'Kurye eklendi', message: `${form.username.trim().toLowerCase()}@dexa.com hesabı hazırlandı.` });
+      }
+      resetForm();
+    } catch (error) {
+      notify({ type: 'error', title: 'Kurye eklenemedi', message: error.message });
     }
-    resetForm();
   };
 
   const editCourier = (courier) => {

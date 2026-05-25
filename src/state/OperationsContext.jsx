@@ -6,6 +6,7 @@ import { todayISO } from '../utils/dateTime';
 import { calculateEarnings } from '../services/earningsService';
 import { getAssignmentTimingStatus } from '../services/timeService';
 import { updateLocalUser, upsertLocalUser } from '../services/localUserStore';
+import { provisionCourierAccount } from '../services/accountProvisioningService';
 import {
   NOTIFICATION_TYPES,
   announcementNotification,
@@ -125,11 +126,13 @@ export function OperationsProvider({ children }) {
     addAuditLog('admin_status_changed', { adminId }, actor);
   }, [addAuditLog]);
 
-  const addCourier = useCallback((payload) => {
+  const addCourier = useCallback(async (payload) => {
+    const provisioned = await provisionCourierAccount(payload);
     const courier = {
-      id: `cr-${crypto.randomUUID().slice(0, 8)}`,
+      id: provisioned?.id || `cr-${crypto.randomUUID().slice(0, 8)}`,
+      uid: provisioned?.uid,
       fullName: payload.fullName,
-      username: payload.username,
+      username: payload.username.trim().toLowerCase(),
       phone: payload.phone,
       password: payload.password,
       active: true,
