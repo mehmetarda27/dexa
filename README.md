@@ -81,7 +81,7 @@ Geçici başlangıç admin hesabı:
 
 - username: `admin`
 - email: `admin@dexa.com`
-- password: `admin123`
+- password: `delivera3333`
 
 Örnek `users/{uid}` dokümanı:
 

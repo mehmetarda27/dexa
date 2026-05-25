@@ -1,9 +1,9 @@
 import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { envValidation } from '../config/env';
+import { getCourierByUid } from './courierService';
 import { auth, firebaseEnabled } from './firebase';
 import { collections, getDocument } from './firestoreService';
-import { getCourierByUid } from './courierService';
 import { findLocalUser } from './localUserStore';
-import { envValidation } from '../config/env';
 
 const SESSION_KEY = 'dexa.session';
 const AUTH_EMAIL_DOMAIN = 'dexa.com';
@@ -15,30 +15,60 @@ function persistSession(session) {
   return session;
 }
 
-function resolveLoginEmail(username) {
-  const value = username.trim().toLowerCase();
-  if (value.includes('@')) return value;
-  if (value === ADMIN_USERNAME) return ADMIN_EMAIL;
-  return `${value}@${AUTH_EMAIL_DOMAIN}`;
+export function resolveLoginEmail(value) {
+  const normalizedValue = String(value || '').trim().toLowerCase();
+  if (!normalizedValue) return '';
+  if (normalizedValue.includes('@')) return normalizedValue;
+  if (normalizedValue === ADMIN_USERNAME) return ADMIN_EMAIL;
+  return `${normalizedValue}@${AUTH_EMAIL_DOMAIN}`;
 }
 
-function loginLocally(username, password) {
-  const localUsername = import.meta.env.VITE_LOCAL_ADMIN_USERNAME;
-  const localPassword = import.meta.env.VITE_LOCAL_ADMIN_PASSWORD || 'admin123';
+function getFriendlyAuthError(error, emailForAuth) {
+  const code = error?.code || '';
+
+  if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password', 'auth/invalid-login-credentials'].includes(code)) {
+    return `Kullanıcı adı/e-posta veya şifre hatalı. Firebase Auth hesabı ${emailForAuth} olarak tanımlı olmalı.`;
+  }
+
+  if (code === 'auth/invalid-email') {
+    return 'Geçerli bir kullanıcı adı veya e-posta girin.';
+  }
+
+  if (code === 'auth/too-many-requests') {
+    return 'Çok fazla hatalı giriş denemesi yapıldı. Lütfen biraz sonra tekrar deneyin.';
+  }
+
+  if (code === 'auth/network-request-failed') {
+    return 'Firebase bağlantısı kurulamadı. İnternet bağlantısını kontrol edin.';
+  }
+
+  return error?.message || 'Giriş yapılamadı. Lütfen bilgileri kontrol edin.';
+}
+
+function loginLocally(usernameOrEmail, password) {
+  const localUsername = import.meta.env.VITE_LOCAL_ADMIN_USERNAME || ADMIN_USERNAME;
+  const localPassword = import.meta.env.VITE_LOCAL_ADMIN_PASSWORD || 'delivera3333';
   const localRole = import.meta.env.VITE_LOCAL_ADMIN_ROLE || 'super_admin';
   const localName = import.meta.env.VITE_LOCAL_ADMIN_NAME || 'Dexa Admin';
+  const normalizedValue = String(usernameOrEmail || '').trim().toLowerCase();
+  const localEmail = resolveLoginEmail(localUsername);
 
-  if (localUsername && localPassword && username === localUsername && password === localPassword) {
+  if (
+    localUsername &&
+    localPassword &&
+    (normalizedValue === localUsername || normalizedValue === localEmail) &&
+    password === localPassword
+  ) {
     return persistSession({
       role: localRole,
       username: localUsername,
       name: localName,
       uid: 'local-bootstrap-admin',
-      email: resolveLoginEmail(localUsername),
+      email: localEmail,
     });
   }
 
-  const localUser = findLocalUser(username, password);
+  const localUser = findLocalUser(normalizedValue, password);
   if (localUser) {
     if (!localUser.active) throw new Error('Hesap aktif değil.');
     return persistSession({
@@ -51,26 +81,40 @@ function loginLocally(username, password) {
     });
   }
 
-  if (username && password) {
-    throw new Error('Kullanıcı adı veya şifre hatalı.');
-  }
-  throw new Error('Kullanıcı adı veya şifre hatalı.');
+  throw new Error('Kullanıcı adı/e-posta veya şifre hatalı.');
 }
 
-export async function login(username, password) {
-  const normalizedUsername = username.trim().toLowerCase();
+export async function login(usernameOrEmail, password) {
+  const loginValue = String(usernameOrEmail || '').trim().toLowerCase();
+  const passwordValue = String(password || '');
+  const emailForAuth = resolveLoginEmail(loginValue);
+
+  if (!loginValue || !passwordValue) {
+    throw new Error('Kullanıcı adı ve şifre zorunludur.');
+  }
 
   if (!firebaseEnabled) {
     if (envValidation.hasBlockingProductionIssue) {
       throw new Error('Firebase ayarları eksik. Vercel Environment Variables alanlarına Firebase config değerlerini ekleyin.');
     }
-    return loginLocally(normalizedUsername, password);
+    return loginLocally(loginValue, passwordValue);
   }
 
-  const credential = await signInWithEmailAndPassword(auth, resolveLoginEmail(normalizedUsername), password);
+  let credential;
+  try {
+    credential = await signInWithEmailAndPassword(auth, emailForAuth, passwordValue);
+  } catch (error) {
+    throw new Error(getFriendlyAuthError(error, emailForAuth));
+  }
+
   const userProfile = await getDocument(collections.users, credential.user.uid);
 
-  if (!userProfile?.active) {
+  if (!userProfile) {
+    await signOut(auth);
+    throw new Error('Giriş başarılı ancak Firestore kullanıcı profili bulunamadı. users koleksiyonunda Auth UID ile kayıt oluşturun.');
+  }
+
+  if (!userProfile.active) {
     await signOut(auth);
     throw new Error('Hesap aktif değil.');
   }
@@ -80,15 +124,15 @@ export async function login(username, password) {
   return persistSession({
     uid: credential.user.uid,
     role: userProfile.role,
-    username: userProfile.username,
-    email: userProfile.email,
+    username: userProfile.username || loginValue,
+    email: userProfile.email || emailForAuth,
     courierId: courierProfile?.id || null,
-    name: courierProfile?.fullName || userProfile.username,
+    name: courierProfile?.fullName || userProfile.name || userProfile.username || loginValue,
   });
 }
 
 export async function resetPassword(emailOrUsername) {
-  const value = emailOrUsername.trim().toLowerCase();
+  const value = String(emailOrUsername || '').trim().toLowerCase();
   if (!value) throw new Error('Şifre sıfırlama için e-posta veya kullanıcı adı girin.');
   if (!firebaseEnabled) {
     throw new Error('Şifre sıfırlama için Firebase Auth yapılandırması gerekir.');
