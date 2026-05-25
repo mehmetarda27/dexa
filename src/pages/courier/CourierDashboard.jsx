@@ -8,10 +8,11 @@ import { getSession } from '../../services/authService';
 import { getCourierEarnings } from '../../services/earningsService';
 import { getCourierDistanceState } from '../../services/locationService';
 import { useOperations } from '../../state/OperationsContext';
+import { todayISO } from '../../utils/dateTime';
 import { formatCurrency, formatHours } from '../../utils/formatCurrency';
 
 export default function CourierDashboard() {
-  const { announcements, couriers, notifications } = useOperations();
+  const { announcements, assignments, couriers, notifications } = useOperations();
   const session = getSession();
   const courier = couriers.find((item) => item.id === session.courierId);
 
@@ -23,11 +24,13 @@ export default function CourierDashboard() {
   const earnings = getCourierEarnings(courier);
   const visibleAnnouncements = announcements.filter((item) => item.target === 'all' || item.target === courier.id);
   const unreadNotifications = notifications.filter((item) => item.userId === courier.id && !item.read).length;
+  const todayAssignment = assignments.find((item) => item.courierId === courier.id && item.date === todayISO() && item.status !== 'cancelled');
+  const shiftLabel = todayAssignment ? `${todayAssignment.startTime} - ${todayAssignment.endTime}` : 'Vardiya yok';
 
   return (
     <div className="grid gap-5">
       <div className="kpi-grid">
-        <StatCard icon={Clock3} label="Bugünkü vardiya" value={courier.shift} detail={courier.status} />
+        <StatCard icon={Clock3} label="Bugünkü vardiya" value={shiftLabel} detail={courier.status} />
         <StatCard icon={MapPin} label="Restoran mesafesi" value={`${distanceState.distance} m`} detail={distanceState.restaurant.name} tone="green" />
         <StatCard icon={Wallet} label="Günlük kazanç" value={formatCurrency(earnings.daily)} detail={formatHours(courier.workedToday)} tone="amber" />
         <StatCard icon={Bell} label="Bildirim" value={unreadNotifications} detail={`${visibleAnnouncements.length} duyuru görünebilir`} tone="rose" />

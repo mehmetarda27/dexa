@@ -6,12 +6,13 @@ import PageHeader from '../../components/common/PageHeader';
 import StatusBadge from '../../components/common/StatusBadge';
 import { useToast } from '../../components/common/ToastProvider';
 import { useOperations } from '../../state/OperationsContext';
+import { todayISO } from '../../utils/dateTime';
 import { validateCourierForm } from '../../utils/validation';
 
 const emptyForm = { fullName: '', username: '', password: '', phone: '', currentStatus: 'Mesai Bitti', restaurantId: '' };
 
 export default function Couriers() {
-  const { couriers, restaurants, addCourier, updateCourier, toggleCourierActive } = useOperations();
+  const { assignments, couriers, restaurants, addCourier, updateCourier, toggleCourierActive } = useOperations();
   const { notify } = useToast();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -74,7 +75,11 @@ export default function Couriers() {
         {couriers.length ? (
           <AdminTable columns={['Kurye', 'Telefon', 'Durum', 'Restoran', 'Vardiya', 'Hesap', 'İşlem']}>
             {couriers.map((courier) => {
-              const restaurant = restaurants.find((item) => item.id === courier.restaurantId);
+              const nextAssignment = assignments
+                .filter((assignment) => assignment.courierId === courier.id && assignment.status !== 'cancelled' && assignment.date >= todayISO())
+                .sort((first, second) => `${first.date} ${first.startTime}`.localeCompare(`${second.date} ${second.startTime}`))[0];
+              const restaurant = restaurants.find((item) => item.id === (nextAssignment?.restaurantId || courier.restaurantId));
+              const shiftLabel = nextAssignment ? `${nextAssignment.startTime} - ${nextAssignment.endTime}` : 'Vardiya yok';
               return (
                 <tr key={courier.id} className="border-b border-white/10 last:border-0">
                   <td className="px-5 py-4">
@@ -84,7 +89,7 @@ export default function Couriers() {
                   <td className="px-5 py-4 text-sm text-dexa-muted">{courier.phone}</td>
                   <td className="px-5 py-4"><StatusBadge>{courier.status}</StatusBadge></td>
                   <td className="px-5 py-4 text-sm text-dexa-muted">{restaurant?.name || '-'}</td>
-                  <td className="px-5 py-4 text-sm text-white">{courier.shift}</td>
+                  <td className="px-5 py-4 text-sm text-white">{shiftLabel}</td>
                   <td className="px-5 py-4"><StatusBadge>{courier.active ? 'Aktif' : 'Pasif'}</StatusBadge></td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">

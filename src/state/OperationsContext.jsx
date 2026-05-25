@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { announcements as initialAnnouncements } from '../data/announcements';
 import { couriers as initialCouriers } from '../data/couriers';
 import { restaurants as initialRestaurants } from '../data/restaurants';
-import { todayISO } from '../utils/dateTime';
+import { shiftWindowMinutes, todayISO } from '../utils/dateTime';
 import { calculateEarnings } from '../services/earningsService';
 import { getAssignmentTimingStatus } from '../services/timeService';
 import { updateLocalUser, upsertLocalUser } from '../services/localUserStore';
@@ -28,17 +28,84 @@ function readStoredState(key, fallback) {
 }
 
 function usePersistentState(key, initialValue) {
+  const storageKey = `${STORAGE_PREFIX}${key}`;
   const [value, setValue] = useState(() => readStoredState(key, initialValue));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${key}`, JSON.stringify(value));
-    } catch {
-      // The in-memory flow still works if browser storage is unavailable.
-    }
-  }, [key, value]);
+  const setPersistentValue = useCallback((updater) => {
+    setValue((current) => {
+      const nextValue = typeof updater === 'function' ? updater(current) : updater;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextValue));
+        window.dispatchEvent(new CustomEvent('dexa.operations.state', {
+          detail: { key: storageKey, value: nextValue },
+        }));
+      } catch {
+        // The in-memory flow still works if browser storage is unavailable.
+      }
+      return nextValue;
+    });
+  }, [storageKey]);
 
-  return [value, setValue];
+  useEffect(() => {
+    const syncFromStorage = (event) => {
+      if (event.key !== storageKey || event.newValue === null) return;
+      try {
+        setValue(JSON.parse(event.newValue));
+      } catch {
+        // Ignore malformed storage from older builds or manual edits.
+      }
+    };
+
+    const syncFromSameWindow = (event) => {
+      if (event.detail?.key === storageKey) setValue(event.detail.value);
+    };
+
+    window.addEventListener('storage', syncFromStorage);
+    window.addEventListener('dexa.operations.state', syncFromSameWindow);
+    return () => {
+      window.removeEventListener('storage', syncFromStorage);
+      window.removeEventListener('dexa.operations.state', syncFromSameWindow);
+    };
+  }, [storageKey]);
+
+  return [value, setPersistentValue];
+}
+
+function getAssignmentShiftDetails(assignment) {
+  if (!assignment) {
+    return {
+      restaurantId: null,
+      shift: 'Vardiya yok',
+      startTime: null,
+      endTime: null,
+      plannedHours: 0,
+    };
+  }
+
+  const windowMinutes = shiftWindowMinutes(assignment.startTime, assignment.endTime);
+  return {
+    restaurantId: assignment.restaurantId,
+    shift: `${assignment.startTime} - ${assignment.endTime}`,
+    startTime: assignment.startTime,
+    endTime: assignment.endTime,
+    plannedHours: Number(((windowMinutes.end - windowMinutes.start) / 60).toFixed(2)),
+  };
+}
+
+function syncCouriersWithAssignments(couriers, assignments) {
+  const activeAssignments = assignments
+    .filter((assignment) => assignment.status !== 'cancelled' && assignment.date >= todayISO())
+    .sort((first, second) => `${first.date} ${first.startTime}`.localeCompare(`${second.date} ${second.startTime}`));
+
+  return couriers.map((courier) => {
+    const nextAssignment = activeAssignments.find((assignment) => assignment.courierId === courier.id);
+    const shiftDetails = getAssignmentShiftDetails(nextAssignment);
+    return {
+      ...courier,
+      ...shiftDetails,
+      restaurantId: shiftDetails.restaurantId || courier.restaurantId,
+    };
+  });
 }
 
 export function OperationsProvider({ children }) {
@@ -52,6 +119,10 @@ export function OperationsProvider({ children }) {
   const [shifts, setShifts] = usePersistentState('shifts', []);
   const [breaks, setBreaks] = usePersistentState('breaks', []);
   const [earnings, setEarnings] = usePersistentState('earnings', []);
+
+  useEffect(() => {
+    setCouriers((current) => syncCouriersWithAssignments(current, assignments));
+  }, [assignments, setCouriers]);
 
   useEffect(() => {
     const session = getSession();
@@ -294,6 +365,20 @@ export function OperationsProvider({ children }) {
     if (target.status === 'active' && !payload.confirmStartedEdit) {
       throw new Error('Başlamış vardiya düzenleniyor. İşlemi onaylayarak tekrar deneyin.');
     }
+    const localConflict = assignments.find((assignment) => {
+      if (
+        assignment.id === assignmentId
+        || assignment.courierId !== payload.courierId
+        || assignment.date !== payload.date
+        || assignment.status === 'cancelled'
+      ) {
+        return false;
+      }
+      const [startA, endA] = [assignment.startTime, assignment.endTime].map((time) => Number(time.replace(':', '')));
+      const [startB, endB] = [payload.startTime, payload.endTime].map((time) => Number(time.replace(':', '')));
+      return startA < endB && startB < endA;
+    });
+    if (localConflict) throw new Error('Bu kurye için aynı saatlerde çakışan vardiya var.');
     const updatedAssignment = { ...target, ...payload, confirmStartedEdit: undefined };
     setAssignments((current) => current.map((assignment) => (assignment.id === assignmentId ? updatedAssignment : assignment)));
     pushNotification(assignmentNotification({
