@@ -6,6 +6,9 @@ import { findLocalUser } from './localUserStore';
 import { envValidation } from '../config/env';
 
 const SESSION_KEY = 'dexa.session';
+const AUTH_EMAIL_DOMAIN = 'dexa.com';
+const ADMIN_USERNAME = 'admin';
+const ADMIN_EMAIL = 'admin@dexa.com';
 
 function persistSession(session) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -13,12 +16,15 @@ function persistSession(session) {
 }
 
 function resolveLoginEmail(username) {
-  return username.includes('@') ? username : `${username}@dexa.local`;
+  const value = username.trim().toLowerCase();
+  if (value.includes('@')) return value;
+  if (value === ADMIN_USERNAME) return ADMIN_EMAIL;
+  return `${value}@${AUTH_EMAIL_DOMAIN}`;
 }
 
 function loginLocally(username, password) {
   const localUsername = import.meta.env.VITE_LOCAL_ADMIN_USERNAME;
-  const localPassword = import.meta.env.VITE_LOCAL_ADMIN_PASSWORD;
+  const localPassword = import.meta.env.VITE_LOCAL_ADMIN_PASSWORD || 'admin123';
   const localRole = import.meta.env.VITE_LOCAL_ADMIN_ROLE || 'super_admin';
   const localName = import.meta.env.VITE_LOCAL_ADMIN_NAME || 'Dexa Admin';
 
@@ -28,7 +34,7 @@ function loginLocally(username, password) {
       username: localUsername,
       name: localName,
       uid: 'local-bootstrap-admin',
-      email: `${localUsername}@dexa.local`,
+      email: resolveLoginEmail(localUsername),
     });
   }
 

@@ -152,7 +152,7 @@ export function OperationsProvider({ children }) {
       password: courier.password,
       role: 'courier',
       name: courier.fullName,
-      email: `${courier.username}@dexa.local`,
+      email: `${courier.username.trim().toLowerCase()}@dexa.com`,
       courierId: courier.id,
       active: courier.active,
     });
@@ -175,7 +175,7 @@ export function OperationsProvider({ children }) {
         password: payload.password,
         role: 'courier',
         name: payload.fullName,
-        email: `${payload.username}@dexa.local`,
+        email: `${payload.username.trim().toLowerCase()}@dexa.com`,
         courierId,
         active: payload.active ?? true,
       });

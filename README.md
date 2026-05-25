@@ -72,6 +72,17 @@ Uygulama env doğrulaması yapar. Firebase bilgileri eksikse uygulama crash verm
 4. Admin ve kurye kullanıcılarını Firebase Auth içinde oluşturun.
 5. Firestore `users` koleksiyonunda Auth UID ile eşleşen kullanıcı dokümanı oluşturun.
 
+Login ekranında kullanıcı adı istenir, ancak Firebase Auth email/password kullandığı için uygulama arka planda email mapping yapar:
+
+- `admin` kullanıcı adı `admin@dexa.com` adresine çevrilir.
+- Kurye kullanıcı adları `kullaniciadi@dexa.com` formatına çevrilir.
+
+Geçici başlangıç admin hesabı:
+
+- username: `admin`
+- email: `admin@dexa.com`
+- password: `admin123`
+
 Örnek `users/{uid}` dokümanı:
 
 ```json
