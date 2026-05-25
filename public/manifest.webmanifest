@@ -1,0 +1,24 @@
+{
+  "name": "Dexa Operasyon Paneli",
+  "short_name": "Dexa",
+  "description": "Kurye vardiya, mesai ve kazanç yönetim sistemi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#05070d",
+  "theme_color": "#2f7df6",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

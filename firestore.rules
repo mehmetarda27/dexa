@@ -1,0 +1,150 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return signedIn() && userDoc().data.active == true ? userDoc().data.role : null;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isSuperAdmin() {
+      return role() == 'super_admin';
+    }
+
+    function isCourier() {
+      return role() == 'courier';
+    }
+
+    function ownsUid(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function courierProfileById(courierId) {
+      return get(/databases/$(database)/documents/couriers/$(courierId));
+    }
+
+    function ownsCourier(courierId) {
+      return isCourier() && courierProfileById(courierId).data.uid == request.auth.uid;
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || ownsUid(uid);
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    match /couriers/{courierId} {
+      allow read: if isAdmin() || ownsCourier(courierId);
+      allow create, update: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if isAdmin() || isCourier();
+      allow create, update: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAdmin() || ownsCourier(resource.data.courierId);
+      allow create, update: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if isAdmin() || isSuperAdmin() || ownsCourier(resource.data.courierId);
+      allow create: if isAdmin() || isSuperAdmin() || (
+        ownsCourier(request.resource.data.courierId)
+        && request.resource.data.status == 'working'
+        && request.resource.data.approvedByAdmin == false
+      );
+      allow update: if isAdmin() || isSuperAdmin() || (
+        ownsCourier(resource.data.courierId)
+        && request.resource.data.courierId == resource.data.courierId
+        && request.resource.data.approvedByAdmin == resource.data.approvedByAdmin
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approvedBy', 'approvedAt', 'approvalStatus'])
+      );
+      allow delete: if false;
+    }
+
+    match /breaks/{breakId} {
+      allow read: if isAdmin() || isSuperAdmin() || ownsCourier(resource.data.courierId);
+      allow create: if ownsCourier(request.resource.data.courierId);
+      allow update: if ownsCourier(resource.data.courierId)
+        && request.resource.data.courierId == resource.data.courierId
+        && request.resource.data.shiftId == resource.data.shiftId;
+      allow delete: if false;
+    }
+
+    match /earnings/{earningId} {
+      allow read: if isAdmin() || isSuperAdmin() || ownsCourier(resource.data.courierId);
+      allow create: if isAdmin() || (
+        ownsCourier(request.resource.data.courierId)
+        && request.resource.data.approvalStatus == 'pending'
+      );
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin() || isSuperAdmin() || ownsCourier(resource.data.courierId);
+      allow create, update: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isAdmin() || isSuperAdmin()
+        || resource.data.targetType == 'all'
+        || ownsCourier(resource.data.targetCourierId);
+      allow create: if isAdmin() || isSuperAdmin();
+      allow delete: if false;
+      allow update: if isAdmin() || isSuperAdmin() || (
+        signedIn()
+        && (resource.data.targetType == 'all' || ownsCourier(resource.data.targetCourierId))
+        && onlyChanged(['readBy', 'updatedAt'])
+      );
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin() || isSuperAdmin() || ownsCourier(resource.data.userId);
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin() || (
+        ownsCourier(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId
+        && onlyChanged(['read', 'readAt', 'updatedAt'])
+      );
+      allow delete: if false;
+    }
+
+    match /auditLogs/{auditLogId} {
+      allow read: if isAdmin() || isSuperAdmin();
+      allow create: if signedIn() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /offlineQueue/{queueId} {
+      allow read: if isAdmin() || ownsUid(resource.data.actorUid);
+      allow create: if signedIn() && request.resource.data.actorUid == request.auth.uid;
+      allow update: if signedIn() && request.resource.data.actorUid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
