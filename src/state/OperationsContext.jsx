@@ -7,6 +7,7 @@ import { calculateEarnings } from '../services/earningsService';
 import { getAssignmentTimingStatus } from '../services/timeService';
 import { updateLocalUser, upsertLocalUser } from '../services/localUserStore';
 import { provisionCourierAccount } from '../services/accountProvisioningService';
+import { getSession } from '../services/authService';
 import {
   NOTIFICATION_TYPES,
   announcementNotification,
@@ -51,6 +52,53 @@ export function OperationsProvider({ children }) {
   const [shifts, setShifts] = usePersistentState('shifts', []);
   const [breaks, setBreaks] = usePersistentState('breaks', []);
   const [earnings, setEarnings] = usePersistentState('earnings', []);
+
+  useEffect(() => {
+    const session = getSession();
+    if (session?.role !== 'courier' || !session?.courierId) return;
+
+    setCouriers((current) => {
+      if (current.some((courier) => courier.id === session.courierId || courier.uid === session.uid)) return current;
+      const username = session.username || session.email?.split('@')[0] || 'kurye';
+      const courier = {
+        id: session.courierId,
+        uid: session.uid,
+        fullName: session.name || username,
+        username,
+        phone: '',
+        active: true,
+        status: 'Mesai Bitti',
+        currentStatus: 'Mesai Bitti',
+        restaurantId: restaurants[0]?.id || null,
+        shift: '10:00 - 18:00',
+        startTime: null,
+        endTime: null,
+        plannedHours: 8,
+        workedToday: 0,
+        weeklyHours: 0,
+        monthlyHours: 0,
+        distanceMeters: 24,
+      };
+      return [courier, ...current];
+    });
+
+    setAssignments((current) => {
+      const hasAnyAssignment = current.some((assignment) => assignment.courierId === session.courierId);
+      if (hasAnyAssignment || !restaurants[0]?.id) return current;
+      return [
+        {
+          id: `asg-${session.courierId}-today`,
+          courierId: session.courierId,
+          restaurantId: restaurants[0].id,
+          date: todayISO(),
+          startTime: '10:00',
+          endTime: '18:00',
+          status: 'planned',
+        },
+        ...current,
+      ];
+    });
+  }, [restaurants, setAssignments, setCouriers]);
 
   const addAuditLog = useCallback((action, metadata = {}, actor = { name: 'Sistem', role: 'admin' }) => {
     const log = {
