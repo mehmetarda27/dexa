@@ -30,10 +30,10 @@ export function ToastProvider({ children }) {
         {toasts.map((toast) => (
           <article
             key={toast.id}
-            className={`rounded-2xl border p-4 shadow-panel backdrop-blur-2xl ${
+            className={`rounded-2xl border p-4 shadow-[0_22px_70px_rgba(0,0,0,0.62)] ${
               toast.type === 'error'
-                ? 'border-rose-300/20 bg-rose-500/15 text-rose-50'
-                : 'border-dexa-cyan/20 bg-dexa-blue/15 text-white'
+                ? 'border-rose-300/25 bg-[#2a1320] text-rose-50'
+                : 'border-dexa-cyan/25 bg-[#0d243a] text-white'
             }`}
           >
             <div className="flex items-start justify-between gap-3">

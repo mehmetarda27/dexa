@@ -7,7 +7,7 @@ import { useToast } from './ToastProvider';
 
 function NotificationItem({ notification, onRead, readOnly = false }) {
   return (
-    <article className={`rounded-2xl border p-3 ${notification.read ? 'border-white/10 bg-white/[0.035]' : 'border-dexa-cyan/25 bg-dexa-cyan/10'}`}>
+    <article className={`rounded-2xl border p-3 ${notification.read ? 'border-white/10 bg-[#121927]' : 'border-dexa-cyan/30 bg-[#10243a]'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <strong className="block text-sm text-white">{notification.title}</strong>
@@ -77,7 +77,7 @@ export default function NotificationCenter({ mode = 'courier' }) {
       </button>
 
       {open && (
-        <div className="fixed inset-x-3 top-[82px] z-[70] max-h-[calc(100dvh-96px)] overflow-hidden rounded-2xl border border-white/10 bg-[#070b16]/98 shadow-panel backdrop-blur-2xl sm:absolute sm:inset-auto sm:right-0 sm:top-14 sm:w-[390px]">
+        <div className="fixed inset-x-3 top-[82px] z-[70] max-h-[calc(100dvh-96px)] overflow-hidden rounded-2xl border border-white/12 bg-[#080d18] shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:absolute sm:inset-auto sm:right-0 sm:top-14 sm:w-[390px]">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4">
             <div>
               <p className="eyebrow">{mode === 'admin' ? 'Gönderilenler' : 'Bildirimler'}</p>
@@ -94,7 +94,7 @@ export default function NotificationCenter({ mode = 'courier' }) {
                 <NotificationItem key={notification.id} notification={notification} onRead={markNotificationRead} readOnly={mode === 'admin'} />
               ))
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-dexa-muted">
+              <div className="rounded-2xl border border-white/10 bg-[#121927] p-5 text-sm text-dexa-muted">
                 Henüz bildirim yok.
               </div>
             )}

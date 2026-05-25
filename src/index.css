@@ -92,11 +92,11 @@ button {
   }
 
   .glass-panel {
-    @apply rounded-[1.5rem] border border-white/10 bg-white/5 shadow-panel backdrop-blur-2xl transition duration-200;
+    @apply rounded-[1.5rem] border border-white/10 bg-[#111722] shadow-panel transition duration-200;
   }
 
   .glass-panel:hover {
-    @apply border-dexa-blue/25 bg-white/10 shadow-glow;
+    @apply border-dexa-blue/25 bg-[#141d2b] shadow-glow;
   }
 
   .field {
